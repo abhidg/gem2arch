@@ -1,0 +1,76 @@
+#!/usr/bin/python
+# gem2arch is a program for automatically creating a
+# PKGBUILD for the Arch package management system from
+# a yaml file of gem specifications
+
+# Copyright (C) 2009 Abhishek Dasgupta <abhidg@gmail.com>
+# License: BSD (see LICENSE file)
+
+from version import version
+from pkgbuild import print_pkgbuild
+import yaml, sys, os
+
+if len(sys.argv) < 3:
+	print "gem2arch %s" % version
+	print "Syntax: gem2arch gem version"
+
+	sys.exit(0)
+else:
+	package = sys.argv[1]+ "-" + sys.argv[2]
+
+if not os.path.exists('yaml'):
+	print "E: No yaml file present!"
+	print "You can download the rubgems yaml database from:"
+	print " http://gems.rubyforge.net/yaml"
+	print "Remember that the file must be named 'yaml'!"
+	sys.exit(1)
+
+f = open('yaml')
+yamlstr=""
+inpackage=False
+foundpackage=False
+subst=""
+
+for line in f.xreadlines():
+	if subst=="from 2": line = line[2:]
+	if subst.startswith("replace -"):
+		toreplace=subst.split(":")[1]
+		ri=line.index(toreplace)
+		line = line[:ri-2]+"- " + line[ri:]
+	subst=""
+	if line.startswith("---"): yamlstr += "---\n"
+	if line.startswith("gems"): yamlstr += line
+	if line[2:].startswith(package):
+		foundpackage = True
+		inpackage = True
+		yamlstr += line.replace(" !ruby/object:Gem::Specification","")
+		continue
+	if line[2] != " " and inpackage == True:
+		inpackage = False
+		break
+	if "version: !ruby/object:Gem::Version" in line:
+		subst="from 2"
+		continue
+	if "!ruby/object:Gem::Version" in line:
+		subst="replace -:version"
+		continue
+	if "!ruby/object:Gem::Dependency" in line:
+		subst="replace -:name"
+		continue
+	if " !ruby/object:Gem::Requirement" in line and inpackage:
+		line=line.replace(" !ruby/object:Gem::Requirement","")
+		yamlstr += line
+		continue
+	if inpackage:
+		yamlstr += line
+	
+if not foundpackage:
+	print "E: Package %s not found in gem index file." % package
+	sys.exit(1)
+
+try:
+	pkgdata = yaml.safe_load(yamlstr)
+except:
+	print "E: %s: error occurred in parsing yaml." % package
+
+print_pkgbuild(pkgdata, sys.argv[1], sys.argv[2])

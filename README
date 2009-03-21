@@ -1,0 +1,12 @@
+Gem to Arch is a program for automatically creating a
+PKGBUILD for the Arch package management system from
+a yaml file of gem specifications
+
+$ gem2arch gem version
+
+will dump the PKGBUILD to the screen. Remember that you
+need to download the yaml file beforehand from
+ http://gems.rubyforge.org/yaml
+which can be done using:
+ wget http://gems.rubyforge.org/yaml
+or any download manager you like.
